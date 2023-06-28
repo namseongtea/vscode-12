@@ -1,0 +1,1356 @@
+CREATE DEFINER=`skatjdxo12dev`@`%` PROCEDURE `up_Insert_ShopOrder_MemberPoint_EventMainAdmin`()
+BEGIN
+	DECLARE v_iErr INT;
+    DECLARE v_iCurDone INT DEFAULT 0;
+    DECLARE v_iAffected_rows INT DEFAULT 0;
+    DECLARE v_iAffected2_rows INT DEFAULT 0;
+    DECLARE v_iAffected3_rows INT DEFAULT 0;
+    DECLARE v_iAffected4_rows INT DEFAULT 0;
+    DECLARE v_dt_idx BIGINT UNSIGNED DEFAULT 0;
+    DECLARE v_od_code VARCHAR(20) DEFAULT '';
+    DECLARE v_gd_supp_price INT DEFAULT 0;
+	DECLARE v_gd_price INT DEFAULT 0;
+    DECLARE v_prchs_dcsn_subject VARCHAR(20) DEFAULT '';
+    DECLARE v_gd_code VARCHAR(20) DEFAULT '';
+    DECLARE v_m_userid VARCHAR(100) DEFAULT '';
+    DECLARE v_m_username VARCHAR(50) DEFAULT '';
+    DECLARE v_vd_code VARCHAR(8) DEFAULT '';
+    DECLARE v_vd_muserid VARCHAR(100) DEFAULT '';
+	DECLARE v_vd_type VARCHAR(2) DEFAULT '';
+    DECLARE v_vd_prnt_code VARCHAR(8) DEFAULT '';
+    DECLARE v_bo_code VARCHAR(8) DEFAULT '';
+    DECLARE v_bo_prnt_code VARCHAR(8) DEFAULT '';
+    DECLARE v_main_bo_code VARCHAR(8) DEFAULT '';
+    DECLARE v_main_vd_code VARCHAR(8) DEFAULT '';
+    DECLARE v_msa_vd_code VARCHAR(8) DEFAULT '';
+    DECLARE v_brn_vd_code VARCHAR(8) DEFAULT '';
+    DECLARE v_md_vd_code VARCHAR(8) DEFAULT '';
+    DECLARE v_main_vd_name VARCHAR(100) DEFAULT '';
+    DECLARE v_msa_vd_name VARCHAR(100) DEFAULT '';
+    DECLARE v_brn_vd_name VARCHAR(100) DEFAULT '';
+    DECLARE v_md_vd_name VARCHAR(100) DEFAULT '';
+    DECLARE v_main_vd_type VARCHAR(2) DEFAULT 'SN';
+    DECLARE v_msa_vd_type VARCHAR(2) DEFAULT 'BN';
+    DECLARE v_brn_vd_type VARCHAR(2) DEFAULT 'BN';
+    DECLARE v_md_vd_type VARCHAR(2) DEFAULT 'MD';
+    DECLARE v_iGdMargin INT DEFAULT 0;
+    DECLARE v_main_margin DECIMAL(3,1) DEFAULT 0.0;
+    DECLARE v_msa_margin DECIMAL(3,1) DEFAULT 0.0;
+    DECLARE v_brn_margin DECIMAL(3,1) DEFAULT 0.0;
+    DECLARE v_md_margin DECIMAL(3,1) DEFAULT 0.0;
+    DECLARE v_mem_margin DECIMAL(3,1) DEFAULT 0.0;
+    DECLARE v_comm_margin DECIMAL(3,1) DEFAULT 0.0;
+    DECLARE v_share_margin DECIMAL(3,1) DEFAULT 0.0;
+    DECLARE v_cardfee DECIMAL(3,1) DEFAULT 0.0;
+    DECLARE v_iMainMargin INT DEFAULT 0;
+    DECLARE v_iMsaMargin INT DEFAULT 0;
+    DECLARE v_iBrnMargin INT DEFAULT 0;
+    DECLARE v_iMdMargin INT DEFAULT 0;
+    DECLARE v_iMemMargin INT DEFAULT 0;
+    DECLARE v_iCommMargin INT DEFAULT 0;
+    DECLARE v_iShareMargin INT DEFAULT 0;
+    DECLARE v_iCardFee INT DEFAULT 0;
+    DECLARE v_iReviewPoint INT DEFAULT 0;
+	DECLARE v_sReviewPointComment VARCHAR(50) DEFAULT '';
+    DECLARE v_boMngId VARCHAR(100) DEFAULT '';
+    DECLARE v_boMngName VARCHAR(50) DEFAULT '';
+    DECLARE v_trContents VARCHAR(100) DEFAULT '';
+    DECLARE v_trSite VARCHAR(100) DEFAULT '';
+    DECLARE k INT;
+    DECLARE v_iResult INT;
+    DECLARE v_iBoCodecnt INT;
+    DECLARE v_py_paytype VARCHAR(10) DEFAULT '';
+    DECLARE v_mem_bo_code VARCHAR(8) DEFAULT '';
+    DECLARE v_mem_bo_prnt_code VARCHAR(8) DEFAULT '';
+    DECLARE v_cf_single_display_yn VARCHAR(1) DEFAULT '';
+    DECLARE v_cf_single_shopsms_yn VARCHAR(1) DEFAULT '';
+    DECLARE v_cf_point_type VARCHAR(10) DEFAULT '';
+    DECLARE v_boMng_payamt INT DEFAULT 0;
+    DECLARE v_iCash INT DEFAULT 0;
+    DECLARE v_iPointCash INT DEFAULT 0;
+    DECLARE v_iReviewPointCash INT DEFAULT 0;
+    DECLARE v_iRecommendCash INT DEFAULT 0;
+    DECLARE v_log_contents VARCHAR(400) DEFAULT '';
+    DECLARE v_recommend_userid VARCHAR(100) DEFAULT '';
+    DECLARE v_recommend_username VARCHAR(100) DEFAULT '';
+    DECLARE v_log_rec_contents VARCHAR(400) DEFAULT '';
+    
+    DECLARE v_recomm_cost INT DEFAULT 0;
+    DECLARE v_recomm_gd_code INT DEFAULT 0;
+    DECLARE v_de_gd_code VARCHAR(20) DEFAULT '';
+    
+    DECLARE ucur_Select_ShopOrderDetail_MemberPoint CURSOR FOR 
+	SELECT OD.dt_idx, OD.od_code, OD.gd_code, ((OD.dt_gd_supp_price + OD.dt_oi_supp_price) * OD.dt_od_qty) AS gd_supp_price, ((OD.dt_gd_price + OD.dt_oi_price) * OD.dt_od_qty) AS gd_price, 
+	OD.dt_prchs_dcsn_subject, OD.gd_code, O.m_userid, O.od_site_id, M.m_username, G.vd_code, BF.bo_code AS mem_bo_code, IFNULL(BF.bo_prnt_code, '') AS mem_bo_prnt_code 
+	FROM ShopOrder_Detail OD INNER JOIN ShopOrder O 
+	ON OD.od_code = O.od_code INNER JOIN ShopGoods G 
+	ON OD.gd_code = G.gd_code INNER JOIN SiminMember M
+	ON O.m_userid = M.m_userid INNER JOIN BranchOfficeInfo BF 
+	ON M.bo_code = BF.bo_code
+    WHERE OD.dt_od_status IN (5, 10) AND OD.dt_prchs_dcsn_yn = 'Y' AND OD.dt_user_point_payment_yn = 'N' AND TIMESTAMPDIFF(DAY, DATE(OD.dt_prchs_dcsn_date), CURDATE()) > 0 
+	ORDER BY OD.dt_idx ASC;
+
+    DECLARE CONTINUE HANDLER FOR SQLEXCEPTION SET v_iErr = -1;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_iCurDone = 1;
+    SET v_iResult = -99;
+    SET v_main_bo_code = (SELECT bo_code FROM ShopVenderInfo WHERE vd_type = 'SN');
+    SET v_main_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'SN' AND bo_code = v_main_bo_code);
+    SET v_main_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_main_vd_code);
+    
+    START TRANSACTION;
+    
+    # 데이터가 있으면 k = 1, 없으면 0
+    SET k = 0;
+    SET v_iBoCodecnt = 0;
+    
+	#커서OPEN
+	OPEN ucur_Select_ShopOrderDetail_MemberPoint;
+		mpoint_loop: LOOP 
+			FETCH ucur_Select_ShopOrderDetail_MemberPoint INTO v_dt_idx, v_od_code, v_de_gd_code, v_gd_supp_price, v_gd_price, v_prchs_dcsn_subject, v_gd_code, v_m_userid, v_trSite, v_m_username, v_vd_code, v_mem_bo_code, v_mem_bo_prnt_code;
+			IF v_iCurDone = 1 THEN
+				IF k = 0 THEN
+					SET v_iResult = 0;
+                END IF;
+				LEAVE mpoint_loop;
+            END IF;
+            
+            SET k = 1;
+            
+            # 마진율적용 
+            SET v_iGdMargin = v_gd_price - v_gd_supp_price;
+            IF v_iGdMargin <= 0 THEN
+				SET v_iCurDone = 1;
+				SET v_iResult = - 2;
+                LEAVE mpoint_loop;
+            ELSE
+				SET v_vd_muserid = (SELECT m_userid FROM ShopVenderInfo WHERE vd_code = v_vd_code);
+				SET v_vd_type = (SELECT vd_type FROM ShopVenderInfo WHERE vd_code = v_vd_code);
+				SET v_vd_prnt_code = IFNULL((SELECT vd_prnt_code FROM ShopVenderInfo WHERE vd_code = v_vd_code), '');
+				SET v_bo_code = (SELECT bo_code FROM ShopVenderInfo WHERE vd_code = v_vd_code);
+				SET v_bo_prnt_code = IFNULL((SELECT bo_prnt_code FROM BranchOfficeInfo WHERE bo_code = v_bo_code), '');
+                SET v_py_paytype = (SELECT py_paytype FROM ShopPaymentInfo WHERE od_code = v_od_code);
+                SET v_cf_single_shopsms_yn = (SELECT cf_single_shopsms_yn FROM ShopConfigInfo WHERE bo_code = v_bo_code);
+                SET v_cf_point_type = (SELECT cf_point_type FROM ShopConfigInfo WHERE bo_code = v_bo_code);
+                
+                # 마진율정책(시민본사정책, 지사단독정책)
+                IF EXISTS(SELECT * FROM ShopBranchMarginPolicyInfo WHERE bo_code IN(v_bo_code, v_bo_prnt_code)) THEN
+					# 지사단독마진율정책
+                    SET v_main_margin = (SELECT p_main_margin FROM ShopBranchMarginPolicyInfo WHERE bo_code IN(v_bo_code, v_bo_prnt_code));
+					SET v_msa_margin = (SELECT p_msa_margin FROM ShopBranchMarginPolicyInfo WHERE bo_code IN(v_bo_code, v_bo_prnt_code));
+					SET v_brn_margin = (SELECT p_brn_margin FROM ShopBranchMarginPolicyInfo WHERE bo_code IN(v_bo_code, v_bo_prnt_code));
+					SET v_md_margin = (SELECT p_md_margin FROM ShopBranchMarginPolicyInfo WHERE bo_code IN(v_bo_code, v_bo_prnt_code));
+					SET v_mem_margin = (SELECT p_mem_margin FROM ShopBranchMarginPolicyInfo WHERE bo_code IN(v_bo_code, v_bo_prnt_code));
+					SET v_share_margin = (SELECT p_share_margin FROM ShopBranchMarginPolicyInfo WHERE bo_code IN(v_bo_code, v_bo_prnt_code));
+					SET v_cardfee = (SELECT p_cardfee FROM ShopBranchMarginPolicyInfo WHERE bo_code IN(v_bo_code, v_bo_prnt_code));
+				ELSE
+					# 시민본사마진율정책
+					SET v_main_margin = (SELECT p_main_margin FROM ShopPolicyInfo);
+					SET v_msa_margin = (SELECT p_msa_margin FROM ShopPolicyInfo);
+					SET v_brn_margin = (SELECT p_brn_margin FROM ShopPolicyInfo);
+					SET v_md_margin = (SELECT p_md_margin FROM ShopPolicyInfo);
+					SET v_mem_margin = (SELECT p_mem_margin FROM ShopPolicyInfo);
+                    SET v_comm_margin = (SELECT p_recommen_margin FROM ShopPolicyInfo); #추천인 마진
+					SET v_share_margin = (SELECT p_share_margin FROM ShopPolicyInfo);
+					SET v_cardfee = (SELECT p_cardfee FROM ShopPolicyInfo);
+                END IF;
+                
+                SET v_iMainMargin = ROUND(v_iGdMargin * (v_main_margin / 100));
+				SET v_iMsaMargin = ROUND(v_iGdMargin * (v_msa_margin / 100));
+				SET v_iBrnMargin = ROUND(v_iGdMargin * (v_brn_margin / 100));
+				SET v_iMdMargin = ROUND(v_iGdMargin * (v_md_margin / 100));
+				SET v_iMemMargin = ROUND(v_iGdMargin * (v_mem_margin / 100));
+                SET v_iCommMargin = ROUND(v_iGdMargin * (v_comm_margin / 100)); #추천인 마진
+				SET v_iShareMargin = ROUND(v_iGdMargin * (v_share_margin / 100));
+				SET v_iCardFee = ROUND(v_iGdMargin * (v_cardfee / 100));
+                
+                # 세로톤에너지는 시민본사마진이 없음
+                IF v_iMainMargin = 0 THEN
+					IF v_iGdMargin < (v_iMsaMargin + v_iBrnMargin + v_iMdMargin + v_iMemMargin + v_iShareMargin + v_iCardFee) THEN
+						SET v_iMsaMargin = v_iGdMargin - (v_iBrnMargin + v_iMdMargin + v_iMemMargin + v_iShareMargin + v_iCardFee);
+					ELSEIF v_iGdMargin > (v_iMsaMargin + v_iBrnMargin + v_iMdMargin + v_iMemMargin + v_iShareMargin + v_iCardFee) THEN
+						SET v_iMsaMargin = v_iGdMargin - (v_iBrnMargin + v_iMdMargin + v_iMemMargin + v_iShareMargin + v_iCardFee);
+                    END IF;
+                ELSE
+					IF v_iGdMargin < (v_iMainMargin + v_iMsaMargin + v_iBrnMargin + v_iMdMargin + v_iMemMargin + v_iShareMargin + v_iCardFee) THEN
+						SET v_iMainMargin = v_iGdMargin - (v_iMsaMargin + v_iBrnMargin + v_iMdMargin + v_iMemMargin + v_iShareMargin + v_iCardFee);
+                    ELSEIF v_iGdMargin > (v_iMainMargin + v_iMsaMargin + v_iBrnMargin + v_iMdMargin + v_iMemMargin + v_iShareMargin + v_iCardFee) THEN
+						SET v_iMainMargin = v_iGdMargin - (v_iMsaMargin + v_iBrnMargin + v_iMdMargin + v_iMemMargin + v_iShareMargin + v_iCardFee);
+                    END IF;
+                END IF;
+                
+                # 쇼핑몰지사단독마진율정책이 있고 결제방식이 무통장입금이면 카드수수료는 시민본사나 단독PG사사용본사에게 마진에 더한다.(PG사를 단독으로 사용한 지사이면 v_cf_single_shopsms_yn = 'Y')
+                IF v_cf_single_shopsms_yn = 'N' THEN
+					IF v_py_paytype = 'bank' THEN
+						# 시민본사에 카드수수료 지급
+						CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iCardFee, @result1);
+						SET v_iResult = (SELECT @result1);
+						IF v_iResult < 0 THEN
+							SET v_iCurDone = 1;
+							LEAVE mpoint_loop;
+						END IF;
+					END IF;
+				ELSE
+					IF v_py_paytype = 'pay' THEN
+						# 단독PG사사용본사에 카드수수료 지급
+                        IF LENGTH(v_bo_prnt_code) = 0 THEN
+							SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_code);
+							SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+                            CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iCardFee, @result1);
+						ELSE
+							SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_prnt_code);
+							SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+                            CALL up_Update_AddShopCommission_MainAdmin(v_bo_prnt_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iCardFee, @result1);
+                        END IF;
+						
+						SET v_iResult = (SELECT @result1);
+						IF v_iResult < 0 THEN
+							SET v_iCurDone = 1;
+							LEAVE mpoint_loop;
+						END IF;
+                    END IF;
+                END IF;
+                
+                
+                # 구매결정작성포인트
+				SET v_iReviewPoint = 0;
+				SET v_sReviewPointComment = '자동적립';
+				
+				#회원이 직접 구매결정한 경우 상품평 포인트 적립
+				IF v_prchs_dcsn_subject = 'm' THEN
+					 IF EXISTS(SELECT * FROM ShopGoods_ReviewInfo WHERE m_userid = v_m_userid AND rv_point_payment_yn = 'N' AND dt_idx = v_dt_idx AND od_code = v_od_code AND gd_code = v_gd_code) THEN
+						SET v_iReviewPoint = IFNULL((SELECT rv_point FROM ShopGoods_ReviewInfo WHERE m_userid = v_m_userid AND rv_point_payment_yn = 'N' AND dt_idx = v_dt_idx AND od_code = v_od_code AND gd_code = v_gd_code), 0);
+						SET v_sReviewPointComment = '상품구매 및 상품평 포인트적립';
+					END IF;
+				END IF;
+                
+                IF v_iReviewPoint > 0 THEN
+					SET v_trContents = '쇼핑몰구매 포인트적립 및 상품평적립';
+                    SET v_log_contents = '쇼핑몰구매 캐시적립 및 상품평적립';
+				ELSE
+					SET v_trContents = '쇼핑몰구매 포인트적립';
+                    SET v_log_contents = '쇼핑몰구매 캐시적립';
+				END IF;
+                
+                # 회원구매포인트가 0보다 크면
+                IF v_iMemMargin > 0 THEN
+					# 포인트를 SPAY로 지급하려면 본사관리자 가상계좌에 잔고가 남아 있어야 함
+					IF v_cf_point_type = 'SPAY' THEN
+						IF LENGTH(v_mem_bo_prnt_code) > 0 THEN
+							SET v_boMngId = (SELECT bo_mngid FROM BranchOfficeInfo WHERE bo_code = v_mem_bo_prnt_code);
+						ELSE
+							SET v_boMngId = (SELECT bo_mngid FROM BranchOfficeInfo WHERE bo_code = v_mem_bo_code);
+						END IF;
+						SET v_boMngName = (SELECT m_username FROM SiminMember WHERE m_userid = v_boMngId);
+						
+						SET v_boMng_payamt = (SELECT TM.PAY_AMT FROM bank.TB_RVAS_MAST TM INNER JOIN bank.Vir_AccountInfo VA ON TM.VACCT_NO = VA.vacct_no AND VA.vacct_use = 'Y' WHERE TM.CUST_CD = v_boMngId);
+						IF (v_boMng_payamt > 0) AND (v_boMng_payamt > (v_iMemMargin + v_iReviewPoint)) THEN 
+							# 회원적립금 가상계좌에 적용
+							CALL bank.up_Insert_Vir_Bank_Tran_List_ShopPointTransfer_MainAdmin(v_boMngId, v_boMngName, v_m_userid, v_m_username, (v_iMemMargin + v_iReviewPoint), v_trContents, v_trSite, v_od_code, @result);
+							SET v_iResult = (SELECT @result);
+							IF v_iResult = 0 THEN
+								# 회원포인트적립로그
+								INSERT INTO ShopOrder_Detail_Member_GoodPoint_LOG (
+									lo_date,
+									dt_idx,
+									od_code,
+									m_userid,
+									lo_dt_gd_point,
+									lo_review_point,
+									lo_comment
+								) VALUES (
+									CURDATE(),
+									v_dt_idx,
+									v_od_code,
+									v_m_userid,
+									v_iMemMargin,
+									v_iReviewPoint,
+									v_sReviewPointComment
+								);
+								
+								#주문상세에서 상품포인트 적립 유무 변경
+								UPDATE ShopOrder_Detail
+								SET dt_user_point_payment_yn = 'Y',
+									dt_user_point_payment_date = NOW()
+								WHERE dt_od_status IN (5, 10) AND dt_prchs_dcsn_yn = 'Y' AND dt_user_point_payment_yn = 'N' AND dt_idx = v_dt_idx AND od_code = v_od_code AND gd_code = v_gd_code;
+								SET v_iAffected_rows = ROW_COUNT();
+								IF v_iAffected_rows = 1 THEN
+									SET v_iResult = 0;
+								ELSE
+									SET v_iCurDone = 1;
+									SET v_iResult = -3;
+									LEAVE mpoint_loop;
+								END IF;
+
+								#상품평 포인트지급유무 변경
+								IF v_prchs_dcsn_subject = 'm' AND v_iReviewPoint > 0 THEN
+									UPDATE ShopGoods_ReviewInfo
+									SET rv_point_payment_yn = 'Y',
+										rv_point_payment_date = NOW()
+									WHERE m_userid = v_m_userid AND rv_point_payment_yn = 'N' AND dt_idx = v_dt_idx AND od_code = v_od_code AND gd_code = v_gd_code;
+									SET v_iAffected2_rows = ROW_COUNT();
+									IF v_iAffected2_rows = 1 THEN
+										SET v_iResult = 0;
+									ELSE
+										SET v_iCurDone = 1;
+										SET v_iResult = -4;
+										LEAVE mpoint_loop;
+									END IF;
+								END IF;
+                                
+                                # 추천자 pay 입금 
+								SET v_recomm_gd_code = ((SELECT gd_code FROM ShopGoods WHERE gd_code = v_de_gd_code));
+								#SET v_recomm_cost = ((SELECT recomm_cost FROM ShopGoods WHERE gd_code = v_de_gd_code));
+                                # 추천인은 앱회원가입이 되어있어야 함 추천자에게 캐시 50,000원 지급
+								SET v_recommend_userid = IFNULL((SELECT m_recommend FROM SiminMember WHERE m_userid = v_m_userid AND m_appregist_yn = 'Y' AND bo_code = v_mem_bo_code), '');
+								SET v_recommend_username = IFNULL((SELECT m_username FROM SiminMember WHERE m_userid = v_recommend_userid), '');
+                                
+								IF LENGTH(v_recommend_userid) > 0 THEN
+									SET v_iRecommendCash = v_iCommMargin;
+									SET v_log_rec_contents = CONCAT('추천받은 ', v_m_username, ' 님 쇼핑몰구매 포인트캐시적립');
+									CALL bank.up_Insert_Vir_Bank_Tran_List_ShopPointTransfer_MainAdmin(v_boMngId, v_boMngName, v_recommend_userid, v_recommend_username, v_iRecommendCash, v_log_rec_contents, v_trSite, v_od_code, @result);
+									
+									SET v_iResult = (SELECT @result);
+									IF v_iResult = 0 THEN
+										# 회원포인트적립로그
+										INSERT INTO ShopOrder_Detail_Member_GoodPoint_LOG (
+											lo_date,
+											dt_idx,
+											od_code,
+											m_userid,
+											lo_dt_gd_point,
+											lo_review_point,
+											lo_comment
+										) VALUES (
+											CURDATE(),
+											v_dt_idx,
+											v_od_code,
+											v_recommend_userid,
+											v_iRecommendCash,
+											0,
+											v_log_rec_contents
+										);
+                                    END IF;    
+								END IF;
+							ELSE
+								SET v_iCurDone = 1;
+								LEAVE mpoint_loop;
+							END IF;
+						END IF;
+					ELSE
+						# 포인트(PAY)를 케시로 전환
+						SET v_iPointCash = ROUND((v_iMemMargin * 100) / 1.1);
+						SET v_iReviewPointCash = v_iReviewPoint * 100; 
+						SET v_iCash = v_iPointCash + v_iReviewPointCash;
+						# 추천인은 앱회원가입이 되어있어야 함
+						SET v_recommend_userid = IFNULL((SELECT m_recommend FROM SiminMember WHERE m_userid = v_m_userid AND m_appregist_yn = 'Y' AND bo_code = v_mem_bo_code), '');
+						
+						# 회원 캐시적립 로그정보에 등록
+						INSERT INTO SiminMember_Cash_LogInfo (
+							m_userid,
+							lg_cash,
+							lg_contents
+						) VALUES (
+							v_m_userid, 
+							v_iCash,
+							v_log_contents
+						);
+						
+						UPDATE SiminMember
+						SET m_cash_tmp = m_cash_tmp + v_iCash
+						WHERE m_userid = v_m_userid AND bo_code = v_mem_bo_code AND m_leave_yn = 'N';
+						SET v_iAffected_rows = ROW_COUNT();
+						IF v_iAffected_rows = 1 THEN
+                            # 회원포인트캐시적립로그
+							INSERT INTO ShopOrder_Detail_Member_GoodPointCash_LOG (
+								lo_date,
+								dt_idx,
+								od_code,
+								m_userid,
+								lo_dt_gd_point_cash,
+								lo_review_point_cash,
+								lo_comment
+							) VALUES (
+								CURDATE(),
+								v_dt_idx,
+								v_od_code,
+								v_m_userid,
+								v_iPointCash,
+								v_iReviewPointCash,
+								v_sReviewPointComment
+							);
+							
+							#주문상세에서 상품포인트 적립 유무 변경
+							UPDATE ShopOrder_Detail
+							SET dt_user_point_payment_yn = 'Y',
+								dt_user_point_payment_date = NOW()
+							WHERE dt_od_status IN (5, 10) AND dt_prchs_dcsn_yn = 'Y' AND dt_user_point_payment_yn = 'N' AND dt_idx = v_dt_idx AND od_code = v_od_code AND gd_code = v_gd_code;
+							SET v_iAffected2_rows = ROW_COUNT();
+							IF v_iAffected2_rows = 1 THEN
+								SET v_iResult = 0;
+							ELSE
+								SET v_iCurDone = 1;
+								SET v_iResult = -3;
+								LEAVE mpoint_loop;
+							END IF;
+
+							#상품평 포인트지급유무 변경
+							IF v_prchs_dcsn_subject = 'm' AND v_iReviewPoint > 0 THEN
+								UPDATE ShopGoods_ReviewInfo
+								SET rv_point_payment_yn = 'Y',
+									rv_point_payment_date = NOW()
+								WHERE m_userid = v_m_userid AND rv_point_payment_yn = 'N' AND dt_idx = v_dt_idx AND od_code = v_od_code AND gd_code = v_gd_code;
+								SET v_iAffected3_rows = ROW_COUNT();
+								IF v_iAffected3_rows = 1 THEN
+									SET v_iResult = 0;
+								ELSE
+									SET v_iCurDone = 1;
+									SET v_iResult = -4;
+									LEAVE mpoint_loop;
+								END IF;
+							END IF;
+                            
+                            # 추천한 회원에게 캐시 지급
+                            SET v_recomm_gd_code = ((SELECT gd_code FROM ShopGoods WHERE gd_code = v_de_gd_code));
+                            SET v_recomm_cost = ((SELECT recomm_cost FROM ShopGoods WHERE gd_code = v_de_gd_code));
+                            
+                            IF v_recomm_gd_code = v_de_gd_code THEN
+								IF LENGTH(v_recommend_userid) > 0 THEN
+									SET v_iRecommendCash = v_iCommMargin;
+									SET v_log_rec_contents = CONCAT('추천받은 ', v_m_username, ' 님 으로부터 쇼핑몰구매 캐시적립');
+								
+									UPDATE SiminMember 
+									SET m_cash_tmp = m_cash_tmp + v_iRecommendCash
+									WHERE m_userid = v_recommend_userid AND m_appregist_yn = 'Y' AND bo_code = v_mem_bo_code;
+									SET v_iAffected4_rows = ROW_COUNT();
+									IF v_iAffected4_rows = 1 THEN
+										# 회원 캐시적립 로그정보에 등록
+										INSERT INTO SiminMember_Cash_LogInfo (
+											m_userid,
+											lg_cash,
+											lg_contents
+										) VALUES (
+											v_recommend_userid, 
+											v_iRecommendCash,
+											v_log_rec_contents
+										);
+										SET v_iResult = 0;
+									ELSE
+										SET v_iCurDone = 1;
+										SET v_iResult = -5;
+										LEAVE mpoint_loop;
+									END IF;
+								END IF;
+                             ELSE
+								IF LENGTH(v_recommend_userid) > 0 THEN
+									SET v_iRecommendCash = v_iCash * 0.1;
+									SET v_log_rec_contents = CONCAT('추천받은 ', v_m_username, ' 님 으로부터 쇼핑몰구매 포인트캐시적립');
+								
+									UPDATE SiminMember 
+									SET m_cash_tmp = m_cash_tmp + v_iRecommendCash
+									WHERE m_userid = v_recommend_userid AND m_appregist_yn = 'Y' AND bo_code = v_mem_bo_code;
+									SET v_iAffected4_rows = ROW_COUNT();
+									IF v_iAffected4_rows = 1 THEN
+										# 회원 캐시적립 로그정보에 등록
+										INSERT INTO SiminMember_Cash_LogInfo (
+											m_userid,
+											lg_cash,
+											lg_contents
+										) VALUES (
+											v_recommend_userid, 
+											v_iRecommendCash,
+											v_log_rec_contents
+										);
+										SET v_iResult = 0;
+									ELSE
+										SET v_iCurDone = 1;
+										SET v_iResult = -5;
+										LEAVE mpoint_loop;
+									END IF;
+								END IF;
+                            END IF;    
+						ELSE
+							SET v_iCurDone = 1;
+							SET v_iResult = -6;
+							LEAVE mpoint_loop;
+						END IF;
+					END IF;
+				END IF;
+                
+                # 구매한회원의 지사코드와 상품판매자의 지사코드가 다른 경우
+                IF v_mem_bo_code <> v_bo_code THEN
+					SET v_iResult = 0;
+                    
+					# 시민본사, 본사, 지사, MD 마진 적립
+					IF v_vd_type = 'SN' THEN
+						# 시민본사마진적용(시민본사는 무조건 시민본사마직을 가져가고 공급자이기에 MD마진만 가져감)
+                        SET v_iMainMargin = v_iMainMargin + v_iMdMargin;
+						CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result1);
+						SET v_iResult = (SELECT @result1);
+						IF v_iResult < 0 THEN
+							SET v_iCurDone = 1;
+							LEAVE mpoint_loop;
+						END IF;
+                    
+                        # 본사사이트에서 시민본사가 올린 상품을 구매한 경우
+                        IF LENGTH(v_mem_bo_prnt_code) = 0 THEN 
+                            # 본사마진적용 (본사마진 + 지사마진)
+                            SET v_iMsaMargin = v_iMsaMargin + v_iBrnMargin;
+							SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_mem_bo_code);
+                            SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+							CALL up_Update_AddShopCommission_MainAdmin(v_mem_bo_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result2);
+							SET v_iResult = (SELECT @result2);
+							IF v_iResult < 0 THEN
+								SET v_iCurDone = 1;
+								LEAVE mpoint_loop;
+							END IF;
+                        ELSE
+							# 지사사이트에서 시민본사가 올린 상품을 구매한경우
+                            # 본사마진적용
+                            SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_mem_bo_prnt_code);
+                            SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+							CALL up_Update_AddShopCommission_MainAdmin(v_mem_bo_prnt_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result2);
+							SET v_iResult = (SELECT @result2);
+							IF v_iResult < 0 THEN
+								SET v_iCurDone = 1;
+								LEAVE mpoint_loop;
+							END IF;
+                            
+                            # 지사마진적용
+                            SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_mem_bo_code);
+                            SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+                            CALL up_Update_AddShopCommission_MainAdmin(v_mem_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iBrnMargin, @result3);
+							SET v_iResult = (SELECT @result3);
+							IF v_iResult < 0 THEN
+								SET v_iCurDone = 1;
+								LEAVE mpoint_loop;
+							END IF;
+                        END IF;
+					ELSEIF v_vd_type = 'BN' THEN
+						# 시민본사또는지사사이트에서 본사가 올린 상품을 구매한 경우
+                        IF LENGTH(v_bo_prnt_code) = 0 THEN 
+							# 본사마진적용(본사가 공급자가 되므로 MD마진만 가져감)
+                            SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_code);
+                            SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+							CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMdMargin, @result1);
+							SET v_iResult = (SELECT @result1);
+							IF v_iResult < 0 THEN
+								SET v_iCurDone = 1;
+								LEAVE mpoint_loop;
+							END IF;
+                            
+                            # 시민본사사이트에서 본사가 올린 상품을 구매한 경우
+                            IF LEFT(v_mem_bo_code, 3) = '100' THEN
+								IF LENGTH(v_mem_bo_prnt_code) = 0 THEN 
+									# 시민본사마진적용 (시민본사마진 + 본사마진 + 지사마진)
+									SET v_iMainMargin = v_iMainMargin + v_iMsaMargin + v_iBrnMargin;
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result2);
+									SET v_iResult = (SELECT @result2);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								ELSE
+									# 시민지사사이트에서 본사가 올린 상품을 구매한 경우
+									# 시민본사마진적용 (시민본사마진만)
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result2);
+									SET v_iResult = (SELECT @result2);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+									
+									# 시민지사마진적용 (지사마진 + 본사마진)
+									SET v_iBrnMargin = v_iBrnMargin + v_iMsaMargin;
+                                    SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_mem_bo_code);
+									SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+									CALL up_Update_AddShopCommission_MainAdmin(v_mem_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iBrnMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                END IF;
+							ELSE
+								# 지사사이트에서 본사가 올린 상품을 구매한 경우
+                                # 세로톤에너지는 시민본사 마진이 없음
+								IF v_iMainMargin > 0 THEN 
+									# 시민본사마진적용(시민본사마진만)
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result2);
+									SET v_iResult = (SELECT @result2);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								END IF;
+                                
+                                # 지사마진적용 (지사마진 + 본사마진)
+                                SET v_iBrnMargin = v_iBrnMargin + v_iMsaMargin;
+								SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_mem_bo_code);
+								SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+                                CALL up_Update_AddShopCommission_MainAdmin(v_mem_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iBrnMargin, @result3);
+								SET v_iResult = (SELECT @result3);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+                            END IF;
+						ELSE
+							# 시민본사,시민지사나 본사,지사사이트에서 지사가 올린 상품을 구매한 경우
+                            # 지사마진적용 (지사는 공급자이기에 MD마진만 가져감)
+							SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_code);
+							SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+							CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iMdMargin, @result1);
+							SET v_iResult = (SELECT @result1);
+							IF v_iResult < 0 THEN
+								SET v_iCurDone = 1;
+								LEAVE mpoint_loop;
+							END IF;
+                            
+                            # 시민본사이트에서 지사가 올린 상품을 구매한 경우
+                            IF LEFT(v_mem_bo_code, 3) = '100' THEN
+								# 본사마진적용 (본사마진만)
+                                SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_prnt_code);
+								SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+								CALL up_Update_AddShopCommission_MainAdmin(v_bo_prnt_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result2);
+								SET v_iResult = (SELECT @result2);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+                            
+								IF LENGTH(v_mem_bo_prnt_code) = 0 THEN 
+									# 시민본사마진적용 (시민본사마진 + 지사마진)
+									SET v_iMainMargin = v_iMainMargin  + v_iBrnMargin;
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								ELSE
+									# 시민본사마진적용(시민본사마진만)
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                    
+                                    # 시민지사마진적용(지사마진만)
+                                    SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_mem_bo_code);
+									SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+									CALL up_Update_AddShopCommission_MainAdmin(v_mem_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iBrnMargin, @result4);
+									SET v_iResult = (SELECT @result4);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                END IF;
+                            ELSE
+								# 본사,지사사이트에서 지사가 올린 상품을 구매한 경우
+                                # 세로톤에너지는 시민본사 마진이 없음
+								IF v_iMainMargin > 0 THEN 
+									# 시민본사마진적용 (시민본사마진만)
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result2);
+									SET v_iResult = (SELECT @result2);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								END IF;
+                                
+                                IF LENGTH(v_mem_bo_prnt_code) = 0 THEN 
+									# 본사마진적용 (본사마진 + 지사마진)
+                                    SET v_iMsaMargin = v_iMsaMargin + v_iBrnMargin;
+                                    SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_prnt_code);
+									SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+									CALL up_Update_AddShopCommission_MainAdmin(v_bo_prnt_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                ELSE
+									# 본사마진적용 (본사마진만)
+                                    SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_prnt_code);
+									SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+									CALL up_Update_AddShopCommission_MainAdmin(v_bo_prnt_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                    
+                                    # 지사마진적용(지사마진만)
+                                    SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_mem_bo_code);
+									SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+									CALL up_Update_AddShopCommission_MainAdmin(v_mem_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iBrnMargin, @result4);
+									SET v_iResult = (SELECT @result4);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                END IF;
+                            END IF;
+						END IF;
+					ELSEIF v_vd_type = 'MD' THEN
+						# MD마진적용(MD는 공급자이면서 MD마진만 가져감)
+						SET v_md_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'MD' AND m_userid = v_vd_muserid AND bo_code = v_bo_code);
+						SET v_md_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_md_vd_code);
+						CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_md_vd_code, v_md_vd_name, v_md_vd_type, v_iMdMargin, @result1);
+						SET v_iResult = (SELECT @result1);
+						IF v_iResult < 0 THEN
+							SET v_iCurDone = 1;
+							LEAVE mpoint_loop;
+						END IF;
+                        
+                        # 시민본사,시민지사나 본사,지사사이트에서 본사MD가 올린 상품을 구매한 경우
+						IF LENGTH(v_bo_prnt_code) = 0 THEN 
+                            # 시민본사,시민지사사이트에서 본사MD가 올린 상품을 구매한 경우
+							IF LEFT(v_mem_bo_code, 3) = '100' THEN
+								# 본사마진적용 (본사마진만)
+								SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_code);
+								SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+								CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result2);
+								SET v_iResult = (SELECT @result2);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+                                
+								IF LENGTH(v_mem_bo_prnt_code) = 0 THEN 
+									# 시민본사마진적용 (시민본사마진 + 지사마진)
+									SET v_iMainMargin = v_iMainMargin  + v_iBrnMargin;
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								ELSE
+									# 시민본사마진적용(시민본사마진만)
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                    
+                                    # 시민지사마진적용(지사마진만)
+                                    SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_mem_bo_code);
+									SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+									CALL up_Update_AddShopCommission_MainAdmin(v_mem_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iBrnMargin, @result4);
+									SET v_iResult = (SELECT @result4);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                END IF;
+                            ELSE
+								# 지사사이트에서 본사MD가 올린 상품을 구매한 경우
+								# 세로톤에너지는 시민본사 마진이 없음
+								IF v_iMainMargin > 0 THEN 
+									# 시민본사 마진 적용
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result2);
+									SET v_iResult = (SELECT @result2);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								END IF;
+                                
+                                IF LENGTH(v_mem_bo_prnt_code) = 0 THEN 
+									# 본사마진적용 (본사마진 + 지사마진)
+                                    SET v_iMsaMargin = v_iMsaMargin + v_iBrnMargin;
+									SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_code);
+									SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+									CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                ELSE
+									# 본사마진적용 (본사마진만)
+									SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_code);
+									SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+									CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                    
+                                    # 지사마진적용(지사마진만)
+                                    SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_mem_bo_code);
+									SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+									CALL up_Update_AddShopCommission_MainAdmin(v_mem_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iBrnMargin, @result4);
+									SET v_iResult = (SELECT @result4);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                END IF;
+                            END IF;
+						ELSE
+							# 시민본사,시민지사나 본사,지사사이트에서 지사MD가 올린 상품을 구매한 경우
+                            IF LEFT(v_mem_bo_code, 3) = '100' THEN
+								# 본사마진적용 (본사마진만)
+								SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_prnt_code);
+								SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+								CALL up_Update_AddShopCommission_MainAdmin(v_bo_prnt_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result2);
+								SET v_iResult = (SELECT @result2);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+                                
+								IF LENGTH(v_mem_bo_prnt_code) = 0 THEN 
+									# 시민본사마진적용 (시민본사마진 + 지사마진)
+									SET v_iMainMargin = v_iMainMargin  + v_iBrnMargin;
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								ELSE
+									# 시민본사마진적용(시민본사마진만)
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                    
+                                    # 시민지사마진적용(지사마진만)
+                                    SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_mem_bo_code);
+									SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+									CALL up_Update_AddShopCommission_MainAdmin(v_mem_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iBrnMargin, @result4);
+									SET v_iResult = (SELECT @result4);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                END IF;
+                            ELSE
+								# 세로톤에너지는 시민본사 마진이 없음
+								IF v_iMainMargin > 0 THEN 
+									# 시민본사 마진 적용
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result2);
+									SET v_iResult = (SELECT @result2);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								END IF;
+                                
+                                # 본사마진적용 (본사마진만)
+								SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_prnt_code);
+								SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+								CALL up_Update_AddShopCommission_MainAdmin(v_bo_prnt_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result3);
+								SET v_iResult = (SELECT @result3);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+								
+								# 지사마진적용(지사마진만)
+								SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_mem_bo_code);
+								SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+								CALL up_Update_AddShopCommission_MainAdmin(v_mem_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iBrnMargin, @result4);
+								SET v_iResult = (SELECT @result4);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+							END IF;
+                        END IF;
+					ELSEIF v_vd_type = 'SE' THEN
+						# MD마진적용(MD마진만 가져감)
+						SET v_md_vd_code = v_vd_prnt_code;
+						SET v_md_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_md_vd_code);
+						CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_md_vd_code, v_md_vd_name, v_md_vd_type, v_iMdMargin, @result1);
+						SET v_iResult = (SELECT @result1);
+						IF v_iResult < 0 THEN
+							SET v_iCurDone = 1;
+							LEAVE mpoint_loop;
+						END IF;
+                        
+                        # 시민본사,시민지사나 본사,지사사이트에서 본사SE가 올린 상품을 구매한 경우
+						IF LENGTH(v_bo_prnt_code) = 0 THEN 
+                            # 시민본사,시민지사사이트에서 본사SE가 올린 상품을 구매한 경우
+							IF LEFT(v_mem_bo_code, 3) = '100' THEN
+								# 본사마진적용 (본사마진만)
+								SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_code);
+								SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+								CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result2);
+								SET v_iResult = (SELECT @result2);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+                                
+								IF LENGTH(v_mem_bo_prnt_code) = 0 THEN 
+									# 시민본사마진적용 (시민본사마진 + 지사마진)
+									SET v_iMainMargin = v_iMainMargin  + v_iBrnMargin;
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								ELSE
+									# 시민본사마진적용(시민본사마진만)
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                    
+                                    # 시민지사마진적용(지사마진만)
+                                    SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_mem_bo_code);
+									SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+									CALL up_Update_AddShopCommission_MainAdmin(v_mem_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iBrnMargin, @result4);
+									SET v_iResult = (SELECT @result4);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                END IF;
+                            ELSE
+								# 지사사이트에서 본사SE가 올린 상품을 구매한 경우
+								# 세로톤에너지는 시민본사 마진이 없음
+								IF v_iMainMargin > 0 THEN 
+									# 시민본사 마진 적용
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result2);
+									SET v_iResult = (SELECT @result2);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								END IF;
+                                
+                                IF LENGTH(v_mem_bo_prnt_code) = 0 THEN 
+									# 본사마진적용 (본사마진 + 지사마진)
+                                    SET v_iMsaMargin = v_iMsaMargin + v_iBrnMargin;
+									SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_code);
+									SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+									CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                ELSE
+									# 본사마진적용 (본사마진만)
+									SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_code);
+									SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+									CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                    
+                                    # 지사마진적용(지사마진만)
+                                    SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_mem_bo_code);
+									SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+									CALL up_Update_AddShopCommission_MainAdmin(v_mem_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iBrnMargin, @result4);
+									SET v_iResult = (SELECT @result4);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                END IF;
+                            END IF;
+						ELSE
+							# 시민본사,시민지사나 본사,지사사이트에서 지사SE가 올린 상품을 구매한 경우
+                            IF LEFT(v_mem_bo_code, 3) = '100' THEN
+								# 본사마진적용 (본사마진만)
+								SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_prnt_code);
+								SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+								CALL up_Update_AddShopCommission_MainAdmin(v_bo_prnt_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result2);
+								SET v_iResult = (SELECT @result2);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+                                
+								IF LENGTH(v_mem_bo_prnt_code) = 0 THEN 
+									# 시민본사마진적용 (시민본사마진 + 지사마진)
+									SET v_iMainMargin = v_iMainMargin  + v_iBrnMargin;
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								ELSE
+									# 시민본사마진적용(시민본사마진만)
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result3);
+									SET v_iResult = (SELECT @result3);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                    
+                                    # 시민지사마진적용(지사마진만)
+                                    SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_mem_bo_code);
+									SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+									CALL up_Update_AddShopCommission_MainAdmin(v_mem_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iBrnMargin, @result4);
+									SET v_iResult = (SELECT @result4);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+                                END IF;
+                            ELSE
+								# 세로톤에너지는 시민본사 마진이 없음
+								IF v_iMainMargin > 0 THEN 
+									# 시민본사 마진 적용
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result2);
+									SET v_iResult = (SELECT @result2);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								END IF;
+                                
+                                # 본사마진적용 (본사마진만)
+								SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_prnt_code);
+								SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+								CALL up_Update_AddShopCommission_MainAdmin(v_bo_prnt_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result3);
+								SET v_iResult = (SELECT @result3);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+								
+								# 지사마진적용(지사마진만)
+								SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_mem_bo_code);
+								SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+								CALL up_Update_AddShopCommission_MainAdmin(v_mem_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iBrnMargin, @result4);
+								SET v_iResult = (SELECT @result4);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+							END IF;
+                        END IF;
+                    END IF;
+				ELSE
+					SET v_iResult = 0;
+                    
+					# 구매한회원의 지사코드와 상품판매자의 지사코드가 같은 경우
+					# 본사,지사,MD 마진 적립
+					IF v_vd_type = 'SN' THEN
+						# 시민본사마진적용(시민본사는 무조건 시민본사마직을 가져가고 본사마진 + 지사마진 + MD마진을 가져감)
+                        SET v_iMainMargin = v_iMainMargin + v_iMsaMargin + v_iBrnMargin + v_iMdMargin;
+						CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result1);
+						SET v_iResult = (SELECT @result1);
+						IF v_iResult < 0 THEN
+							SET v_iCurDone = 1;
+							LEAVE mpoint_loop;
+						END IF;
+                    ELSEIF v_vd_type = 'BN' THEN 
+						IF LENGTH(v_bo_prnt_code) = 0 THEN 
+							# 세로톤에너지는 시민본사 마진이 없음
+							IF v_iMainMargin > 0 THEN 
+								# 시민본사 마진 적용
+								CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result1);
+								SET v_iResult = (SELECT @result1);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+							END IF;
+                        
+							# 본사마진적용(본사마진 + 지사마진 + MD마진)
+                            SET v_iMsaMargin = v_iMsaMargin + v_iBrnMargin + v_iMdMargin;
+                            SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_code);
+                            SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+							CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result2);
+							SET v_iResult = (SELECT @result2);
+							IF v_iResult < 0 THEN
+								SET v_iCurDone = 1;
+								LEAVE mpoint_loop;
+							END IF;
+                        ELSE
+							# 지사
+							# 시민본사의 지사
+							IF LEFT(v_mem_bo_code, 3) = '100' THEN
+								# 시민본사마진적용 (시민본사마진 + 본사마진)
+                                SET v_iMainMargin = v_iMainMargin + v_iMsaMargin;
+								CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result1);
+								SET v_iResult = (SELECT @result1);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+                            ELSE
+								# 세로톤에너지는 시민본사 마진이 없음
+								IF v_iMainMargin > 0 THEN 
+									# 시민본사 마진 적용
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result1);
+									SET v_iResult = (SELECT @result1);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								END IF;
+                                
+                                # 본사마진적용(본사마진만)
+								SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_prnt_code);
+								SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+								CALL up_Update_AddShopCommission_MainAdmin(v_bo_prnt_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result2);
+								SET v_iResult = (SELECT @result2);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+                            END IF;
+                        
+                            # 지사마진적용 (지사마진 + MD마진)
+							SET v_iBrnMargin = v_iBrnMargin + v_iMdMargin;
+							SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_code);
+							SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+							CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iBrnMargin, @result3);
+							SET v_iResult = (SELECT @result3);
+							IF v_iResult < 0 THEN
+								SET v_iCurDone = 1;
+								LEAVE mpoint_loop;
+							END IF;
+                        END IF;
+                    ELSEIF v_vd_type = 'MD' THEN
+						# MD마진적용(MD마진만 가져감)
+						SET v_md_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'MD' AND m_userid = v_vd_muserid AND bo_code = v_bo_code);
+						SET v_md_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_md_vd_code);
+						CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_md_vd_code, v_md_vd_name, v_md_vd_type, v_iMdMargin, @result1);
+						SET v_iResult = (SELECT @result1);
+						IF v_iResult < 0 THEN
+							SET v_iCurDone = 1;
+							LEAVE mpoint_loop;
+						END IF;
+                            
+						# 시민본사 또는 본사
+						IF LENGTH(v_bo_prnt_code) = 0 THEN 
+							IF LEFT(v_mem_bo_code, 3) = '100' THEN
+								# 시민본사마진적용 (시민본사마진 + 본사마진 + 지사마진)
+                                SET v_iMainMargin = v_iMainMargin + v_iMsaMargin + v_iBrnMargin;
+								CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result2);
+								SET v_iResult = (SELECT @result2);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+                            ELSE
+								# 세로톤에너지는 시민본사 마진이 없음
+								IF v_iMainMargin > 0 THEN 
+									# 시민본사 마진 적용
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result2);
+									SET v_iResult = (SELECT @result2);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								END IF;
+                                
+                                # 본사마진적용(본사마진 + 지사마진)
+								SET v_iMsaMargin = v_iMsaMargin + v_iBrnMargin;
+								SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_code);
+								SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+								CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result3);
+								SET v_iResult = (SELECT @result3);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+                            END IF;
+                        ELSE
+							# 지사
+                            # 시민본사지사
+							IF LEFT(v_mem_bo_code, 3) = '100' THEN
+								# 시민본사마진적용 (시민본사마진 + 본사마진)
+                                SET v_iMainMargin = v_iMainMargin + v_iMsaMargin;
+								CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result2);
+								SET v_iResult = (SELECT @result2);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+                            ELSE
+								# 세로톤에너지는 시민본사 마진이 없음
+								IF v_iMainMargin > 0 THEN 
+									# 시민본사 마진 적용
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result2);
+									SET v_iResult = (SELECT @result2);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								END IF;
+                                
+                                # 본사마진적용(본사마진만)
+								SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_prnt_code);
+								SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+								CALL up_Update_AddShopCommission_MainAdmin(v_bo_prnt_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result3);
+								SET v_iResult = (SELECT @result3);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+                            END IF;
+                            
+                            # 지사마진적용 (지사마진만)
+							SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_code);
+							SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+							CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iBrnMargin, @result4);
+							SET v_iResult = (SELECT @result4);
+							IF v_iResult < 0 THEN
+								SET v_iCurDone = 1;
+								LEAVE mpoint_loop;
+							END IF;
+                        END IF;
+                    ELSEIF v_vd_type = 'SE' THEN
+						# MD마진적용(MD마진만 가져감)
+						SET v_md_vd_code = v_vd_prnt_code;
+						SET v_md_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_md_vd_code);
+						CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_md_vd_code, v_md_vd_name, v_md_vd_type, v_iMdMargin, @result1);
+						SET v_iResult = (SELECT @result1);
+						IF v_iResult < 0 THEN
+							SET v_iCurDone = 1;
+							LEAVE mpoint_loop;
+						END IF;
+                        
+                        # 시민본사 또는 본사
+						IF LENGTH(v_bo_prnt_code) = 0 THEN 
+							# 시민본사지사
+							IF LEFT(v_mem_bo_code, 3) = '100' THEN
+								# 시민본사마진적용 (시민본사마진 + 본사마진)
+                                SET v_iMainMargin = v_iMainMargin + v_iMsaMargin + v_iBrnMargin;
+								CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result2);
+								SET v_iResult = (SELECT @result2);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+                            ELSE
+								# 세로톤에너지는 시민본사 마진이 없음
+								IF v_iMainMargin > 0 THEN 
+									# 시민본사 마진 적용
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result2);
+									SET v_iResult = (SELECT @result2);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								END IF;
+                                
+                                # 본사마진적용(본사마진 + 지사마진)
+								SET v_iMsaMargin = v_iMsaMargin + v_iBrnMargin;
+								SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_code);
+								SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+								CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result3);
+								SET v_iResult = (SELECT @result3);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+                            END IF;
+                        ELSE
+							# 지사
+                            # 시민본사지사
+							IF LEFT(v_mem_bo_code, 3) = '100' THEN
+								# 시민본사마진적용 (시민본사마진 + 본사마진)
+                                SET v_iMainMargin = v_iMainMargin + v_iMsaMargin;
+								CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result2);
+								SET v_iResult = (SELECT @result2);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+                            ELSE
+								# 세로톤에너지는 시민본사 마진이 없음
+								IF v_iMainMargin > 0 THEN 
+									# 시민본사 마진 적용
+									CALL up_Update_AddShopCommission_MainAdmin(v_main_bo_code, v_main_vd_code, v_main_vd_name, v_main_vd_type, v_iMainMargin, @result2);
+									SET v_iResult = (SELECT @result2);
+									IF v_iResult < 0 THEN
+										SET v_iCurDone = 1;
+										LEAVE mpoint_loop;
+									END IF;
+								END IF;
+                                
+                                # 본사마진적용(본사마진만)
+								SET v_msa_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_prnt_code);
+								SET v_msa_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_msa_vd_code);
+								CALL up_Update_AddShopCommission_MainAdmin(v_bo_prnt_code, v_msa_vd_code, v_msa_vd_name, v_msa_vd_type, v_iMsaMargin, @result3);
+								SET v_iResult = (SELECT @result3);
+								IF v_iResult < 0 THEN
+									SET v_iCurDone = 1;
+									LEAVE mpoint_loop;
+								END IF;
+                            END IF;
+                            
+                            # 지사마진적용 (지사마진만)
+							SET v_brn_vd_code = (SELECT vd_code FROM ShopVenderInfo WHERE vd_type = 'BN' AND bo_code = v_bo_code);
+							SET v_brn_vd_name = (SELECT vd_name FROM ShopVenderInfo WHERE vd_code = v_brn_vd_code);
+							CALL up_Update_AddShopCommission_MainAdmin(v_bo_code, v_brn_vd_code, v_brn_vd_name, v_brn_vd_type, v_iBrnMargin, @result4);
+							SET v_iResult = (SELECT @result4);
+							IF v_iResult < 0 THEN
+								SET v_iCurDone = 1;
+								LEAVE mpoint_loop;
+							END IF;
+                        END IF;
+                    END IF;
+                END IF;
+                
+                # 회원 5,000 이상이면 공유마진 적용
+				IF v_iShareMargin > 0 THEN 
+					SET v_iBoCodecnt = (
+						SELECT COUNT(*) FROM (
+							SELECT COUNT(M.m_idx) AS m_cnt, BF.bo_code, V.vd_code, V.vd_type 
+							FROM SiminMember M INNER JOIN BranchOfficeInfo BF 
+							ON M.bo_code = BF.bo_code AND BF.bo_status = 'Y' INNER JOIN ShopConfigInfo C 
+							ON BF.bo_code = C.bo_code AND C.cf_status = 'Y' INNER JOIN ShopVenderInfo V 
+							ON BF.bo_code = V.bo_code AND V.vd_type IN('SN', 'BN') 
+							WHERE BF.bo_code NOT IN (
+								SELECT bo_code FROM BranchOfficeInfo WHERE bo_code IN(
+									 SELECT bo_code FROM ShopBranchMarginPolicyInfo WHERE p_share_margin = 0 
+								) OR bo_prnt_code IN(
+									SELECT bo_code FROM ShopBranchMarginPolicyInfo WHERE p_share_margin = 0 
+								)
+							)
+							GROUP BY BF.bo_code, V.vd_code   
+							HAVING m_cnt >= 5000 
+						) X
+					);
+					IF (v_iBoCodecnt > 0) THEN 
+						CALL up_Update_AddShopShareCommission_MainAdmin(v_iBoCodecnt, v_iShareMargin, @result5);
+						SET v_iResult = (SELECT @result5);
+						IF v_iResult < 0 THEN
+							SET v_iCurDone = 1;
+							LEAVE mpoint_loop;
+						END IF;
+					END IF;
+				END IF;
+			END IF;
+        END LOOP mpoint_loop;
+	CLOSE ucur_Select_ShopOrderDetail_MemberPoint;
+
+	IF v_iErr < 0 THEN
+		SET v_iResult = -1;
+		ROLLBACK;
+	ELSE
+		IF v_iResult = 0 THEN
+			COMMIT;
+		ELSE
+			ROLLBACK;
+        END IF;
+	END IF;
+    
+    # 스캐줄로그 등록
+    INSERT INTO ShopAutoSchedule_LOG (lo_procedure, lo_result) VALUES ('up_Insert_ShopOrder_MemberPoint_EventMainAdmin', v_iResult);
+END

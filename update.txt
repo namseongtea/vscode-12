@@ -1,0 +1,37 @@
+###################
+	앱 / 웹
+###################
+1) pubspec.yaml (dependencies) 전체 복사 붙혀넣기
+2) 나도기자(merooreporter)
+- 복사 붙혀넣기 붙혀넣기 및 앱명 도메인 넣기
+- articleerepots 파일 복사 붙혀넣기 및 앱명 도메인 넣기
+- webviewPlugin 파일 복사 붙혀넣기 및 앱명 도메인 넣기
+- assets = list.png / gift.png / repoterposter.png / appconfig07.png
+3) 웹(C = App > AppLoginTransfer)
+- 추가 ArticleJebiList / ArticleReward / NewsReport
+C + M 추가 config > database 추가
+- 제보리스트 당첨리스트 (기자, 회원) 추가
+4) shop / shopspaylist / my_container 추가
+- C = App > AppGoodsSpay
+- M = App > App_model / getBankTransactionList 추가
+$this->bankdbconn = $this->load->database('bank', true);
+
+
+
+kffnews
+한국농어민뉴스
+https://kffnews.com
+$this->dbconnjebo
+
+backgroundColor: const Color(0xff12356d),
+
+#유튜브 동영상주소#
+https://youtu.be/j3_19DS_dxM
+https://youtu.be/JDlGP59sRlo
+https://youtu.be/ig4V_Du6s8U
+https://youtu.be/UuHpVgwqbA0
+https://youtu.be/XGBJuukBK24
+https://youtu.be/YfjSanG6Akw
+https://youtu.be/ImJksnnM6Ek
+https://youtu.be/IqK7r0SnHO4
+https://youtu.be/ApdhUkA3Zk4
